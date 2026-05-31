@@ -1,16 +1,16 @@
 !pip install telethon -q
-from telethon.sync import TelegramClient
+import asyncio
+from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-api_id = 30837946
-api_hash = '662e0ed8d8ec5772e61a73e6d400ef55'
-phone = '+93796908504'
+async def get_session():
+    client = TelegramClient(StringSession(), 30837946, '662e0ed8d8ec5772e61a73e6d400ef55')
+    await client.connect()
+    await client.send_code_request('+93796908504')
+    code = input('کد: ')
+    await client.sign_in('+93796908504', code)
+    print('SESSION:')
+    print(StringSession.save(client.session))
+    await client.disconnect()
 
-client = TelegramClient(StringSession(), api_id, api_hash)
-client.connect()
-client.send_code_request(phone)
-code = input('کد: ')
-client.sign_in(phone, code)
-print('SESSION:')
-print(StringSession.save(client.session))
-client.disconnect()
+await get_session()
