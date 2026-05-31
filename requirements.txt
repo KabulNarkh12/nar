@@ -1,1 +1,16 @@
-1BZWaqwUAUIrituVxhMFQ4zrw6tddDb9NjKP_F9GYMBD5JxnUxrgfdzKSSVnb_MWe2TYjF7L9kXA8xzBtbuM-rnmM1TGyF12N3x-RCINaJD2471JBIGmcpaQ1OOr2UgVxSVEsjZD0s6azl6XPdCC_xVtqfi6wWpeKawrbC1t-k11P67pfQow5oTjhJB6nC8-UdvamD2aR0Ae5rEm5mrDlArzLysJq8w00A1MkbRHB9RtCZGWuR2fqFr3XTmDvfR1prMz9G57R-lJjLDtvMv02NnAiKAeWs7IpebuefqrtDYMc9sZLUJsysKhM_zmy3TDGne956poyih07E9ab3pAqjPmc_QC-xmU=
+!pip install telethon -q
+from telethon.sync import TelegramClient
+from telethon.sessions import StringSession
+
+api_id = 30837946
+api_hash = '662e0ed8d8ec5772e61a73e6d400ef55'
+phone = '+93796908504'
+
+client = TelegramClient(StringSession(), api_id, api_hash)
+client.connect()
+client.send_code_request(phone)
+code = input('کد: ')
+client.sign_in(phone, code)
+print('SESSION:')
+print(StringSession.save(client.session))
+client.disconnect()
