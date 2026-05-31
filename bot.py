@@ -1,101 +1,59 @@
 import asyncio
-import schedule
-import time
-import re
 import os
-from datetime import datetime
-from telethon.sync import TelegramClient
+from datetime import datetime, timezone, timedelta
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 from telegram import Bot
 
-# ====== تنظیمات ======
 BOT_TOKEN = "8830939229:AAGC-WcUFrOw9RUiI34iGr0cyuTbfMJ-WgY"
 CHANNEL_ID = "@KabulNarkh12"
 API_ID = 30837946
 API_HASH = "662e0ed8d8ec5772e61a73e6d400ef55"
-PHONE = "+93796908504"
+SESSION_STRING = os.environ.get('SESSION_STRING', '')
 
-# کانال‌های منبع
 SOURCE_CHANNELS = [
-    "https://t.me/rahimallahjan1",
-    "https://t.me/KabulNarkh",
-    "https://t.me/aqbazjgani",
+    'aqbazjgani',
+    'KabulNarkh',
+    'rahimallahjan1',
 ]
 
-def extract_rates(text):
-    rates = {}
-    patterns = {
-        '🇺🇸 دالر امریکایی': r'دالر[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇪🇺 یورو': r'یورو[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇬🇧 پوند': r'پوند[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇵🇰 روپیه پاکستانی': r'روپیه[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇮🇷 تومان': r'تومان[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇦🇪 درهم': r'درهم[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇸🇦 ریال سعودی': r'ریال[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇹🇷 لیره ترکی': r'لیره[^\d]*(\d+[\.,]\d+|\d+)',
-        '🇨🇳 یوان چینی': r'یوان[^\d]*(\d+[\.,]\d+|\d+)',
-    }
-    for currency, pattern in patterns.items():
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            rates[currency] = match.group(1).replace(',', '.')
-    return rates
+bot = Bot(token=BOT_TOKEN)
 
-def format_message(rates):
-    now = datetime.now().strftime("%Y/%m/%d - %H:%M")
+def format_message(text, source):
+    kabul_time = datetime.now(timezone.utc) + timedelta(hours=4, minutes=30)
+    now = kabul_time.strftime("%Y/%m/%d - %H:%M:%S")
     msg = "━━━━━━━━━━━━━━━━━━\n"
-    msg += "💱 **نرخ اسعار امروز**\n"
-    msg += "🏪 سرای شهزاده - کابل\n"
+    msg += "💱 نرخ اسعار لحظه‌ای\n"
+    msg += "🏪 سرای شهزاده کابل\n"
     msg += f"🕐 {now}\n"
     msg += "━━━━━━━━━━━━━━━━━━\n\n"
-    for currency, rate in rates.items():
-        msg += f"{currency}: {rate} افغانی\n"
-    msg += "\n━━━━━━━━━━━━━━━━━━\n"
+    msg += text
+    msg += "\n\n━━━━━━━━━━━━━━━━━━\n"
+    msg += f"📡 منبع: @{source}\n"
     msg += "📢 @KabulNarkh12"
     return msg
 
-async def fetch_and_post():
-    print(f"شروع گرفتن نرخ‌ها - {datetime.now()}")
-    all_rates = {}
-    try:
-        async with TelegramClient('bot_session', API_ID, API_HASH) as client:
-            for channel in SOURCE_CHANNELS:
-                try:
-                    messages = await client.get_messages(channel, limit=10)
-                    for msg in messages:
-                        if msg.text:
-                            rates = extract_rates(msg.text)
-                            if len(rates) >= 2:
-                                all_rates.update(rates)
-                                print(f"✅ نرخ از {channel} گرفته شد")
-                                break
-                except Exception as e:
-                    print(f"خطا در {channel}: {e}")
-    except Exception as e:
-        print(f"خطا در اتصال: {e}")
+async def main():
+    print("🚀 ربات شروع کرد...")
+    client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+    await client.start()
+    print("✅ به تلگرام وصل شد!")
 
-    if all_rates:
+    @client.on(events.NewMessage(chats=SOURCE_CHANNELS))
+    async def handler(event):
         try:
-            telegram_bot = Bot(token=BOT_TOKEN)
-            message = format_message(all_rates)
-            await telegram_bot.send_message(
-                chat_id=CHANNEL_ID,
-                text=message,
-                parse_mode='Markdown'
-            )
-            print("✅ پیام در کانال نشر شد!")
+            text = event.message.text
+            if not text:
+                return
+            source = event.chat.username
+            print(f"✅ پیام جدید از @{source}")
+            message = format_message(text, source)
+            bot.send_message(chat_id=CHANNEL_ID, text=message)
+            print("✅ نشر شد!")
         except Exception as e:
-            print(f"خطا در ارسال: {e}")
-    else:
-        print("❌ نرخی پیدا نشد")
+            print(f"خطا: {e}")
 
-def run():
-    asyncio.run(fetch_and_post())
+    print("👂 منتظر پیام‌های جدید...")
+    await client.run_until_disconnected()
 
-schedule.every(30).minutes.do(run)
-
-print("🚀 ربات شروع کرد...")
-run()
-
-while True:
-    schedule.run_pending()
-    time.sleep(30)
+asyncio.run(main())
